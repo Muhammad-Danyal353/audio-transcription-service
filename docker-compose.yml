@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  audio-transcribe:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        PYTHON_VERSION: 3.11.9
+    container_name: audio-transcribe-service
+    ports:
+      - "8000:8000"
+    environment:
+      # Application Configuration
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      
+      # Model Configuration
+      - WHISPER_MODEL_SIZE=small
+      - ENABLE_SEPARATION=true
+      - ENABLE_GPU=auto
+      
+      # Audio Processing
+      - TARGET_SAMPLE_RATE=16000
+      - MAX_FILE_SIZE_MB=100
+      - CHUNK_DURATION_SEC=30
+      
+      # Performance
+      - WORKERS=1
+      - MAX_CONCURRENT_REQUESTS=4
+      
+    volumes:
+      # Optional: Mount model cache to avoid re-downloading models
+      - model-cache:/root/.cache
+      
+      # Optional: Mount logs directory
+      - ./logs:/app/logs
+      
+      # Optional: Development mode - mount source code for hot reload
+      # Uncomment the line below for development
+      # - ../src:/app/src
+    
+    # Resource limits (optional but recommended for production)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '4'
+    #       memory: 4G
+    #     reservations:
+    #       cpus: '2'
+    #       memory: 2G
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Network configuration
+    networks:
+      - audio-net
+
+  # Optional: Add nginx reverse proxy for production
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: audio-transcribe-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - audio-transcribe
+  #   networks:
+  #     - audio-net
+
+volumes:
+  model-cache:
+    driver: local
+
+networks:
+  audio-net:
+    driver: bridge

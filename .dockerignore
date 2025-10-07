@@ -1,0 +1,79 @@
+# Ignore git repo files
+.git
+.gitignore
+
+# Docker files
+.dockerignore
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+env.bak/
+venv.bak/
+
+# Tests, coverage and caches
+tests/
+.tox/
+.nox/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Logs and local files
+*.log
+logs/
+*.sqlite3
+
+# Environment / secret files
+.env
+.env.*
+secrets.env
+credentials.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node modules (if present)
+node_modules/
+
+# Sample/media used for local testing (optional - remove if needed in image)
+sample_audio/
+
