@@ -26,10 +26,10 @@ class Settings(BaseSettings):
     app_name: str = "Audio Transcription Service"
     app_version: str = "1.0.0"
     api_v1_prefix: str = "/v1"
-    debug_mode: bool = Field(default=False, description="Enable debug mode")
+    debug_mode: bool = Field(default=True, description="Enable debug mode")
 
     # Server Configuration
-    host: str = Field(default="0.0.0.0", description="Server host")
+    host: str = Field(default="localhost", description="Server host")
     port: int = Field(default=8000, description="Server port")
     workers: int = Field(default=1, description="Number of worker processes")
 
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     # Audio Processing Configuration
     max_file_size_mb: int = Field(
-        default=100, description="Maximum audio file size in MB"
+        default=10, description="Maximum audio file size in MB"
     )
     target_sample_rate: int = Field(
         default=16000, description="Target sample rate for audio processing"

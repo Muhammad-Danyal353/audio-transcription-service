@@ -8,6 +8,7 @@ for tracking execution times, memory usage, and system metrics.
 import time
 import functools
 import threading
+import uuid
 from typing import Dict, Any, Optional, Callable, List
 from dataclasses import dataclass, field
 from contextlib import contextmanager
@@ -65,7 +66,7 @@ class PerformanceMonitor:
         Returns:
             Operation ID for tracking
         """
-        operation_id = f"{operation_name}_{int(time.time() * 1000)}"
+        operation_id = f"{operation_name}_{uuid.uuid4().hex[:8]}"
         
         with self._lock:
             metrics = TimingMetrics(
@@ -107,10 +108,11 @@ class PerformanceMonitor:
             
             self._metrics.append(metrics)
         
-        logger.debug(
-            f"Completed operation: {metrics.operation_name} "
-            f"({metrics.duration_ms:.2f}ms, success: {success})"
-        )
+        if metrics and metrics.operation_name and metrics.duration_ms is not None:
+            logger.debug(
+                f"Completed operation: {metrics.operation_name} "
+                f"({metrics.duration_ms:.2f}ms, success: {success})"
+            )
         return metrics
     
     def _get_memory_usage_mb(self) -> Optional[float]:
@@ -292,3 +294,298 @@ def time_context(operation_name: str, metadata: Optional[Dict[str, Any]] = None)
         raise
     finally:
         _performance_monitor.end_operation(operation_id, success=True)
+
+
+def get_performance_monitor() -> PerformanceMonitor:
+    """
+    Get the global performance monitor instance.
+    
+    Returns:
+        The global PerformanceMonitor instance
+    """
+    return _performance_monitor
+
+
+def get_operation_stats(operation_name: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Convenience function to get operation statistics.
+    
+    Args:
+        operation_name: Filter by operation name (None for all)
+        
+    Returns:
+        Dictionary with operation statistics
+    """
+    return _performance_monitor.get_operation_stats(operation_name)
+
+
+def get_memory_stats() -> Dict[str, Any]:
+    """
+    Convenience function to get memory usage statistics.
+    
+    Returns:
+        Dictionary with memory statistics
+    """
+    return _performance_monitor.get_memory_stats()
+
+
+def get_performance_summary() -> Dict[str, Any]:
+    """
+    Convenience function to get comprehensive performance summary.
+    
+    Returns:
+        Dictionary with performance summary
+    """
+    return _performance_monitor.get_summary()
+
+
+def clear_performance_metrics() -> None:
+    """
+    Convenience function to clear all performance metrics.
+    """
+    _performance_monitor.clear_metrics()
+
+
+def export_metrics_to_dict() -> Dict[str, Any]:
+    """
+    Export all metrics to a dictionary format for serialization.
+    
+    Returns:
+        Dictionary containing all metrics data
+    """
+    with _performance_monitor._lock:
+        metrics_data = []
+        for metric in _performance_monitor._metrics:
+            metrics_data.append({
+                "operation_name": metric.operation_name,
+                "start_time": metric.start_time,
+                "end_time": metric.end_time,
+                "duration_ms": metric.duration_ms,
+                "memory_before_mb": metric.memory_before_mb,
+                "memory_after_mb": metric.memory_after_mb,
+                "memory_delta_mb": metric.memory_delta_mb,
+                "success": metric.success,
+                "error_message": metric.error_message,
+                "metadata": metric.metadata
+            })
+        
+        return {
+            "metrics": metrics_data,
+            "summary": _performance_monitor.get_summary(),
+            "memory_stats": _performance_monitor.get_memory_stats(),
+            "export_timestamp": time.time()
+        }
+
+
+def get_percentile_stats(operation_name: Optional[str] = None, percentiles: List[float] = None) -> Dict[str, Any]:
+    """
+    Get percentile statistics for operation durations.
+    
+    Args:
+        operation_name: Filter by operation name (None for all)
+        percentiles: List of percentiles to calculate (default: [50, 90, 95, 99])
+        
+    Returns:
+        Dictionary with percentile statistics
+    """
+    if percentiles is None:
+        percentiles = [50, 90, 95, 99]
+    
+    with _performance_monitor._lock:
+        metrics = _performance_monitor._metrics.copy()
+    
+    if operation_name:
+        metrics = [m for m in metrics if m.operation_name == operation_name]
+    
+    durations = [m.duration_ms for m in metrics if m.duration_ms is not None]
+    
+    if not durations:
+        return {"error": "No duration data available"}
+    
+    durations.sort()
+    n = len(durations)
+    
+    percentile_stats = {}
+    for p in percentiles:
+        if p < 0 or p > 100:
+            continue
+        
+        index = (p / 100) * (n - 1)
+        if index.is_integer():
+            percentile_stats[f"p{p}"] = durations[int(index)]
+        else:
+            lower = durations[int(index)]
+            upper = durations[min(int(index) + 1, n - 1)]
+            percentile_stats[f"p{p}"] = lower + (upper - lower) * (index - int(index))
+    
+    return {
+        "operation_name": operation_name or "all_operations",
+        "total_samples": n,
+        "percentiles": percentile_stats
+    }
+
+
+def get_system_resources() -> Dict[str, Any]:
+    """
+    Get comprehensive system resource information.
+    
+    Returns:
+        Dictionary with system resource data
+    """
+    try:
+        import psutil
+        
+        # CPU information
+        cpu_percent = psutil.cpu_percent(interval=1)
+        cpu_count = psutil.cpu_count()
+        cpu_freq = psutil.cpu_freq()
+        
+        # Memory information
+        memory = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        
+        # Disk information
+        disk = psutil.disk_usage('/')
+        
+        # Network information (if available)
+        try:
+            network = psutil.net_io_counters()
+            network_info = {
+                "bytes_sent": network.bytes_sent,
+                "bytes_recv": network.bytes_recv,
+                "packets_sent": network.packets_sent,
+                "packets_recv": network.packets_recv
+            }
+        except (AttributeError, OSError):
+            network_info = {"error": "Network stats not available"}
+        
+        return {
+            "cpu": {
+                "percent": cpu_percent,
+                "count": cpu_count,
+                "frequency_mhz": cpu_freq.current if cpu_freq else None,
+                "frequency_max_mhz": cpu_freq.max if cpu_freq else None
+            },
+            "memory": {
+                "total_mb": memory.total / (1024 * 1024),
+                "available_mb": memory.available / (1024 * 1024),
+                "used_mb": memory.used / (1024 * 1024),
+                "percent": memory.percent
+            },
+            "swap": {
+                "total_mb": swap.total / (1024 * 1024),
+                "used_mb": swap.used / (1024 * 1024),
+                "free_mb": swap.free / (1024 * 1024),
+                "percent": swap.percent
+            },
+            "disk": {
+                "total_mb": disk.total / (1024 * 1024),
+                "used_mb": disk.used / (1024 * 1024),
+                "free_mb": disk.free / (1024 * 1024),
+                "percent": (disk.used / disk.total) * 100
+            },
+            "network": network_info,
+            "timestamp": time.time()
+        }
+    except ImportError:
+        return {"error": "psutil not available"}
+
+
+def reset_performance_monitor() -> None:
+    """
+    Reset the global performance monitor (clear all data and reinitialize).
+    """
+    global _performance_monitor
+    _performance_monitor.clear_metrics()
+    _performance_monitor = PerformanceMonitor()
+    logger.info("Performance monitor reset")
+
+
+# Additional utility functions for common timing patterns
+
+def time_async_operation(operation_name: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
+    """
+    Decorator for timing async functions.
+    
+    Args:
+        operation_name: Custom name for the operation (defaults to function name)
+        metadata: Additional metadata to attach
+        
+    Example:
+        @time_async_operation("async_audio_processing")
+        async def process_audio_async(file_path: str):
+            # Async function implementation
+            pass
+    """
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            op_name = operation_name or func.__name__
+            operation_id = _performance_monitor.start_operation(op_name, metadata)
+            
+            try:
+                result = await func(*args, **kwargs)
+                _performance_monitor.end_operation(operation_id, success=True)
+                return result
+            except Exception as e:
+                _performance_monitor.end_operation(
+                    operation_id, 
+                    success=False, 
+                    error_message=str(e)
+                )
+                raise
+        
+        return wrapper
+    return decorator
+
+
+class TimingContext:
+    """
+    Enhanced context manager with additional features for timing operations.
+    
+    Provides more control over timing operations with support for
+    nested operations and custom metadata updates.
+    """
+    
+    def __init__(self, operation_name: str, metadata: Optional[Dict[str, Any]] = None):
+        """
+        Initialize timing context.
+        
+        Args:
+            operation_name: Name of the operation
+            metadata: Initial metadata to attach
+        """
+        self.operation_name = operation_name
+        self.operation_id = None
+        self.metadata = metadata or {}
+    
+    def __enter__(self):
+        """Enter the timing context."""
+        self.operation_id = _performance_monitor.start_operation(
+            self.operation_name, 
+            self.metadata
+        )
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the timing context."""
+        if self.operation_id:
+            success = exc_type is None
+            error_message = str(exc_val) if exc_val else None
+            _performance_monitor.end_operation(
+                self.operation_id, 
+                success=success, 
+                error_message=error_message
+            )
+    
+    def update_metadata(self, **kwargs):
+        """
+        Update metadata for the current operation.
+        
+        Args:
+            **kwargs: Metadata key-value pairs to update
+        """
+        if self.operation_id and self.operation_id in _performance_monitor._active_operations:
+            with _performance_monitor._lock:
+                if self.operation_id in _performance_monitor._active_operations:
+                    _performance_monitor._active_operations[self.operation_id].metadata.update(kwargs)

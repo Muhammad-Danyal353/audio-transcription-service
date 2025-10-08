@@ -238,8 +238,20 @@ def ensure_wav(
     if already_wav and not needs_resample and not needs_channels:
         return src_path
 
-    with temporary_audio_file(suffix=".wav") as tmp_wav:
-        return convert_to_wav(src_path, tmp_wav, sample_rate=target_sample_rate, mono=mono)
+    # Create a temporary file that won't be automatically deleted
+    import tempfile
+    tmp_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+    tmp_wav.close()
+    
+    try:
+        return convert_to_wav(src_path, tmp_wav.name, sample_rate=target_sample_rate, mono=mono)
+    except Exception:
+        # Clean up the temporary file if conversion fails
+        try:
+            Path(tmp_wav.name).unlink()
+        except:
+            pass
+        raise
 
 
 def _torchaudio_resampler(orig_sr: int, target_sr: int):
@@ -250,20 +262,29 @@ def _torchaudio_resampler(orig_sr: int, target_sr: int):
 def load_audio_as_tensor(
     file_path: Union[str, Path], target_sample_rate: Optional[int] = None, mono: bool = True
 ) -> Tuple[torch.Tensor, int]:
-    file_path = ensure_wav(file_path, target_sample_rate=target_sample_rate or settings.target_sample_rate, mono=mono)
+    original_path = Path(file_path)
+    processed_path = ensure_wav(file_path, target_sample_rate=target_sample_rate or settings.target_sample_rate, mono=mono)
+    
+    try:
+        waveform, sample_rate = torchaudio.load(str(processed_path))
 
-    waveform, sample_rate = torchaudio.load(str(file_path))
+        if mono and waveform.shape[0] > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
 
-    if mono and waveform.shape[0] > 1:
-        waveform = waveform.mean(dim=0, keepdim=True)
+        desired_sr = target_sample_rate or settings.target_sample_rate
+        if sample_rate != desired_sr:
+            resampler = _torchaudio_resampler(sample_rate, desired_sr)
+            waveform = resampler(waveform)
+            sample_rate = desired_sr
 
-    desired_sr = target_sample_rate or settings.target_sample_rate
-    if sample_rate != desired_sr:
-        resampler = _torchaudio_resampler(sample_rate, desired_sr)
-        waveform = resampler(waveform)
-        sample_rate = desired_sr
-
-    return waveform, sample_rate
+        return waveform, sample_rate
+    finally:
+        # Clean up temporary file if it was created
+        if processed_path != original_path:
+            try:
+                processed_path.unlink()
+            except:
+                pass
 
 
 @log_execution_time(name="resample_audio_tensor")
