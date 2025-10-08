@@ -39,14 +39,6 @@ audio-transcription-service/
 │   ├── test_transcriber.py         # Transcription tests
 │   └── test_integration.py         # End-to-end tests
 ├── sample_audio/
-│   ├── clean_speech.wav            # Clear single speaker
-│   ├── noisy_speech.wav            # Background noise
-│   ├── music_with_vocals.mp3       # Music separation test
-│   ├── multi_speaker.wav           # Multiple speakers
-│   └── README.md                   # Expected behavior documentation
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
 ├── docs/
 │   ├── ADR.md                      # Architecture Decision Record
 │   ├── API.md                      # API documentation
@@ -59,6 +51,8 @@ audio-transcription-service/
 ├── pyproject.toml                  # ruff, mypy, black config
 ├── README.md
 └── PROGRESS.md                     # Step-by-step tracking
+|── Dockerfile
+|── docker-compose.yml
 ```
 
 ---
@@ -68,6 +62,7 @@ audio-transcription-service/
 ### Phase 1: Project Setup (Day 1)
 
 #### ✅ Step 1.1: Initialize Repository
+
 - [ ] Create GitHub repository
 - [ ] Clone locally
 - [ ] Create initial project structure
@@ -75,6 +70,7 @@ audio-transcription-service/
 - [ ] Create `README.md` with basic overview
 
 #### ✅ Step 1.2: Environment Setup
+
 - [ ] Create `requirements.txt`:
   ```
   fastapi==0.104.1
@@ -106,6 +102,7 @@ audio-transcription-service/
 - [ ] Setup virtual environment: `python -m venv venv`
 
 #### ✅ Step 1.3: Docker Setup
+
 - [ ] Create `docker/Dockerfile` (multi-stage build)
 - [ ] Create `docker/docker-compose.yml`
 - [ ] Create `.dockerignore`
@@ -116,28 +113,36 @@ audio-transcription-service/
 ### Phase 2: Core Infrastructure (Day 1-2)
 
 #### ✅ Step 2.1: Configuration Management
+
 **File: `src/core/config.py`**
+
 - [ ] Create Settings class with pydantic-settings
 - [ ] Environment variables: `MODEL_DIR`, `MAX_FILE_SIZE`, `ENABLE_GPU`
 - [ ] Model size configurations: `WHISPER_MODEL_SIZE`
 - [ ] Audio processing params: `TARGET_SAMPLE_RATE`, `CHUNK_SIZE`
 
 #### ✅ Step 2.2: Logging & Observability
+
 **File: `src/core/logging.py`**
+
 - [ ] Setup structured JSON logging
 - [ ] Request ID generation and propagation
 - [ ] Performance timing decorators
 - [ ] Log levels based on environment
 
 #### ✅ Step 2.3: Device Detection
+
 **File: `src/utils/device_utils.py`**
+
 - [ ] GPU availability check (CUDA/MPS)
 - [ ] Auto-select device (GPU → CPU fallback)
 - [ ] Memory estimation utilities
 - [ ] Quantization support detection
 
 #### ✅ Step 2.4: Audio Utilities
+
 **File: `src/utils/audio_utils.py`**
+
 - [ ] Audio format detection (ffprobe)
 - [ ] Format conversion (ffmpeg wrapper)
 - [ ] Resampling to target sample rate
@@ -149,14 +154,18 @@ audio-transcription-service/
 ### Phase 3: Audio Processing Pipeline (Day 2-3)
 
 #### ✅ Step 3.1: Voice Activity Detection
+
 **File: `src/services/vad.py`**
+
 - [ ] Implement WebRTC VAD or Silero VAD
 - [ ] Chunk audio into voiced/unvoiced segments
 - [ ] Remove silence with configurable threshold
 - [ ] Return timestamps for voiced regions
 
 #### ✅ Step 3.2: Vocal Separation
+
 **File: `src/services/separator.py`**
+
 - [ ] Initialize Demucs model (lazy loading)
 - [ ] Implement `separate_vocals()` method
 - [ ] Handle separation failures gracefully
@@ -167,7 +176,9 @@ audio-transcription-service/
 **Decision**: Use Demucs hybrid transformer (htdemucs) for quality vs speed balance
 
 #### ✅ Step 3.3: ASR Transcription
+
 **File: `src/services/transcriber.py`**
+
 - [ ] Initialize Whisper model (configurable size: tiny/base/small/medium)
 - [ ] Implement `transcribe()` method
 - [ ] Handle language detection/hints
@@ -179,14 +190,18 @@ audio-transcription-service/
 **Decision**: Use Whisper Small as default (good accuracy/speed trade-off)
 
 #### ✅ Step 3.4: Speaker Diarization (Optional)
+
 **File: `src/services/diarization.py`**
+
 - [ ] Integrate pyannote.audio (if time permits)
 - [ ] Map speaker labels to transcript segments
 - [ ] Handle HuggingFace token requirement
 - [ ] Make fully optional with feature flag
 
 #### ✅ Step 3.5: Pipeline Orchestrator
+
 **File: `src/services/audio_processor.py`**
+
 - [ ] Create `AudioProcessor` class
 - [ ] Implement full pipeline:
   1. Validate & decode audio
@@ -205,7 +220,9 @@ audio-transcription-service/
 ### Phase 4: API Layer (Day 3-4)
 
 #### ✅ Step 4.1: Data Models
+
 **File: `src/api/models.py`**
+
 - [ ] `TranscribeConfig` (request config)
 - [ ] `TranscriptSegment` (segment with timestamps)
 - [ ] `PipelineInfo` (separation & transcription metadata)
@@ -214,7 +231,9 @@ audio-transcription-service/
 - [ ] `ErrorResponse` (error details)
 
 #### ✅ Step 4.2: API Routes
+
 **File: `src/api/routes.py`**
+
 - [ ] `POST /v1/transcribe` endpoint
 - [ ] Multipart form handling (file + config JSON)
 - [ ] File size validation (413 for oversized)
@@ -224,7 +243,9 @@ audio-transcription-service/
 - [ ] Response formatting
 
 #### ✅ Step 4.3: FastAPI Application
+
 **File: `src/api/main.py`**
+
 - [ ] Create FastAPI app with metadata
 - [ ] Include routes
 - [ ] Add middleware (CORS, timing, logging)
@@ -234,7 +255,9 @@ audio-transcription-service/
 - [ ] Auto-generate OpenAPI docs
 
 #### ✅ Step 4.4: Middleware & Error Handling
+
 **File: `src/api/middleware.py`**
+
 - [ ] Request logging middleware
 - [ ] Timing middleware
 - [ ] Error standardization
@@ -245,7 +268,9 @@ audio-transcription-service/
 ### Phase 5: CLI Utility (Day 4)
 
 #### ✅ Step 5.1: CLI Client
+
 **File: `src/cli/client.py`**
+
 - [ ] Argument parsing (file path, API URL, config options)
 - [ ] File upload via multipart/form-data
 - [ ] Response formatting (pretty print JSON)
@@ -254,6 +279,7 @@ audio-transcription-service/
 - [ ] Make executable: `python -m src.cli.client`
 
 **Usage Example**:
+
 ```bash
 python -m src.cli.client \
   --file sample_audio/noisy_speech.wav \
@@ -267,12 +293,14 @@ python -m src.cli.client \
 ### Phase 6: Testing (Day 4-5)
 
 #### ✅ Step 6.1: Unit Tests
+
 - [ ] `test_audio_utils.py`: Format conversion, resampling
 - [ ] `test_separator.py`: Vocal separation logic
 - [ ] `test_transcriber.py`: Transcription accuracy
 - [ ] `test_vad.py`: Voice activity detection
 
 #### ✅ Step 6.2: Integration Tests
+
 - [ ] `test_api.py`: API endpoint behavior
   - Valid requests
   - Invalid file formats
@@ -281,7 +309,9 @@ python -m src.cli.client \
 - [ ] `test_integration.py`: Full pipeline with sample audio
 
 #### ✅ Step 6.3: Sample Audio Preparation
+
 **Directory: `sample_audio/`**
+
 - [ ] Create/download 3-5 test clips (10-30s)
 - [ ] Document expected behavior in `sample_audio/README.md`:
   - Clean speech → accurate transcription
@@ -295,6 +325,7 @@ python -m src.cli.client \
 ### Phase 7: Containerization (Day 5)
 
 #### ✅ Step 7.1: Dockerfile Optimization
+
 - [ ] Multi-stage build (builder + runtime)
 - [ ] Layer caching for dependencies
 - [ ] Pre-download models in build stage
@@ -303,6 +334,7 @@ python -m src.cli.client \
 - [ ] Minimize image size
 
 **Example**:
+
 ```dockerfile
 FROM python:3.10-slim as builder
 # Install build dependencies, download models
@@ -311,6 +343,7 @@ FROM python:3.10-slim as runtime
 ```
 
 #### ✅ Step 7.2: Docker Compose
+
 - [ ] Service definition
 - [ ] Volume mounts for models (optional)
 - [ ] Environment variables
@@ -318,6 +351,7 @@ FROM python:3.10-slim as runtime
 - [ ] Resource limits (optional)
 
 #### ✅ Step 7.3: Docker Testing
+
 - [ ] Build image: `docker build -t audio-transcribe:latest .`
 - [ ] Run container: `docker-compose up`
 - [ ] Test API from host
@@ -329,7 +363,9 @@ FROM python:3.10-slim as runtime
 ### Phase 8: Documentation (Day 5-6)
 
 #### ✅ Step 8.1: Architecture Decision Record
+
 **File: `docs/ADR.md`**
+
 - [ ] Pipeline stages diagram
 - [ ] Model selection rationale
   - Whisper Small: 244M params, ~5x faster than Medium
@@ -341,7 +377,9 @@ FROM python:3.10-slim as runtime
 - [ ] Failure modes & fallbacks
 
 #### ✅ Step 8.2: API Documentation
+
 **File: `docs/API.md`**
+
 - [ ] Endpoint details
 - [ ] Request/response examples
 - [ ] Error codes
@@ -349,12 +387,15 @@ FROM python:3.10-slim as runtime
 - [ ] Performance expectations
 
 #### ✅ Step 8.3: OpenAPI Specification
+
 **File: `docs/openapi.yaml`**
+
 - [ ] Export from FastAPI: `/openapi.json`
 - [ ] Save as YAML
 - [ ] Validate schema
 
 #### ✅ Step 8.4: README.md
+
 - [ ] Overview & features
 - [ ] Quick start guide
 - [ ] Setup instructions (local & Docker)
@@ -371,6 +412,7 @@ FROM python:3.10-slim as runtime
 ### Phase 9: Quality & Polish (Day 6)
 
 #### ✅ Step 9.1: Code Quality
+
 - [ ] Run `ruff check .` and fix issues
 - [ ] Run `black .` for formatting
 - [ ] Run `mypy src/` for type checking
@@ -378,6 +420,7 @@ FROM python:3.10-slim as runtime
 - [ ] Remove debug code
 
 #### ✅ Step 9.2: Performance Optimization
+
 - [ ] Profile cold start time
 - [ ] Profile per-request latency
 - [ ] Optimize model loading (lazy vs eager)
@@ -385,6 +428,7 @@ FROM python:3.10-slim as runtime
 - [ ] Consider quantization (int8) for faster inference
 
 #### ✅ Step 9.3: Final Testing
+
 - [ ] Run full test suite: `pytest tests/ -v --cov=src`
 - [ ] Test with all sample audio files
 - [ ] Test both with/without GPU
@@ -392,6 +436,7 @@ FROM python:3.10-slim as runtime
 - [ ] Docker build and run test
 
 #### ✅ Step 9.4: Security Review
+
 - [ ] Input validation completeness
 - [ ] File size limits enforced
 - [ ] Temporary file cleanup
@@ -403,18 +448,21 @@ FROM python:3.10-slim as runtime
 ## 📊 Key Decisions & Trade-offs
 
 ### Model Selection
-| Component | Model | Size | Speed | Accuracy | Rationale |
-|-----------|-------|------|-------|----------|-----------|
-| ASR | Whisper Small | 244M | Medium | Good | Best accuracy/speed for production |
-| Separation | Demucs htdemucs | 83M | Fast | Excellent | Hybrid transformer, CPU-friendly |
-| VAD | Silero VAD | 1M | Very Fast | Good | Lightweight, no external deps |
+
+| Component  | Model           | Size | Speed     | Accuracy  | Rationale                          |
+| ---------- | --------------- | ---- | --------- | --------- | ---------------------------------- |
+| ASR        | Whisper Small   | 244M | Medium    | Good      | Best accuracy/speed for production |
+| Separation | Demucs htdemucs | 83M  | Fast      | Excellent | Hybrid transformer, CPU-friendly   |
+| VAD        | Silero VAD      | 1M   | Very Fast | Good      | Lightweight, no external deps      |
 
 ### Performance Targets
+
 - **Cold Start**: < 10s (model loading)
 - **Per-Request (30s audio)**: < 15s on CPU, < 5s on GPU
 - **Memory**: < 2GB RAM without GPU, < 4GB with GPU
 
 ### Fallback Strategy
+
 1. Separation fails → Use raw audio + log warning
 2. GPU unavailable → CPU inference (slower)
 3. VAD fails → Process full audio
@@ -425,6 +473,7 @@ FROM python:3.10-slim as runtime
 ## 🚀 Running the Service
 
 ### Local Development
+
 ```bash
 # Install dependencies
 pip install -r requirements.txt
@@ -438,6 +487,7 @@ pytest tests/ -v --cov=src
 ```
 
 ### Docker
+
 ```bash
 # Build
 docker build -f docker/Dockerfile -t audio-transcribe:latest .
@@ -460,6 +510,7 @@ Use this checklist to track implementation progress. Mark items as complete with
 **Estimated Timeline**: 5-6 days for full implementation with testing and documentation.
 
 **Priority Order**:
+
 1. Core infrastructure (config, logging, utils)
 2. Audio processing pipeline (transcriber → separator → vad)
 3. API layer
