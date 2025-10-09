@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  api:
+    build: .
+    image: audio-transcribe-minimal:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - UVICORN_WORKERS=1
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2g
